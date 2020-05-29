@@ -246,6 +246,7 @@ def convertImgSet(img_set):
             # 看一下是否存在标注信息
             if len(bboxes) == 0:
                 print("your bndboxes no face data")
+
             # 接下来把图片写入到voc指定的JPEGImages图片文件夹中,这里是图片的具体像素信息
             cv2.imwrite("{}/JPEGImages/{}".format(rootdir, filename), img)
 
@@ -269,9 +270,9 @@ if __name__ == "__main__":
     for imp_set in imp_sets:
         convertImgSet(imp_set)
         # 注意, 我们在convertImaset里写文件名的时候,是按你传入的信息,即imp_set来决定的
-        # 在voc数据集中, 我们文件名需要定义成train.txt和test.txt
+        # 在voc数据集中, 我们文件名需要定义成trainval.txt和test.txt
         # 所以我们定义个函数,修改文件名
     shutil.move(rootdir + "/ImagSets/Main/" + "train.txt", rootdir + "/ImageSets/Main/" + "trainval.txt")
-    # 这里把train.txt修改成了train.txt
+    # 这里把train.txt修改成了trainval.txt
     shutil.move(rootdir + "/ImagSets/Main/" + "val.txt", rootdir + "/ImageSets/Main/" + "test.txt")
     # 把val.txt修改成了test.tst
