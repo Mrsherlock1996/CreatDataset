@@ -1,143 +1,163 @@
-import xml.etree.ElementTree as ET
-import pickle
-import os
-from os import listdir, getcwd
-from os.path import join
-import random
-
-classes=["nomask","mask"]
+import os,sys,shutil
+from xml.dom.minidom import Document
+import cv2 as cv
 
 
-def clear_hidden_files(path):
-    dir_list = os.listdir(path)
-    for i in dir_list:
-        abspath = os.path.join(os.path.abspath(path), i)
-        if os.path.isfile(abspath):
-            if i.startswith("._"):
-                os.remove(abspath)
-        else:
-            clear_hidden_files(abspath)
+def writexml(filename, saveimg, bboxes, xmlpath):
+    doc = Document()
+    annotation = doc.createElement('annotation')
+    doc.appendChild(annotation)
 
-def convert(size, box):
-    dw = 1./size[0]
-    dh = 1./size[1]
-    x = (box[0] + box[1])/2.0
-    y = (box[2] + box[3])/2.0
-    w = box[1] - box[0]
-    h = box[3] - box[2]
-    x = x*dw
-    w = w*dw
-    y = y*dh
-    h = h*dh
-    return (x,y,w,h)
+    folder = doc.createElement('folder')
+    folder_name = doc.createTextNode('widerface')
+    folder.appendChild(folder_name)
+    annotation.appendChild(folder)
 
-def convert_annotation(image_id): #把xml文件转成txt文件
-    in_file = open('Annotations\%s.xml' %image_id)
-    out_file = open('labels\%s.txt' %image_id, 'w')
-    tree=ET.parse(in_file)
-    root = tree.getroot()
-    size = root.find('size')
-    w = int(size.find('width').text)
-    h = int(size.find('height').text)
+    filename = doc.createElement('filename')
+    annotation.appendChild(filename)
+    filename_name = doc.createTextNode('filename')
+    filename.appendChild(filename_name)
 
-    for obj in root.iter('object'):
-        difficult = obj.find('difficult').text
-        cls = obj.find('name').text
-        if cls not in classes or int(difficult) == 1:  #这里是排除和mask与no mask标签无关的object
-            continue
-        cls_id = classes.index(cls)   #得到mask或nomask标签索引
-        xmlbox = obj.find('bndbox')   #寻找boundingbox的信息,构建信息列表 b 同时转换成float类型
-        b = (float(xmlbox.find('xmin').text), float(xmlbox.find('xmax').text), float(xmlbox.find('ymin').text), float(xmlbox.find('ymax').text))
-        #print("image_id = %s\n" %image_id)
-        bb = convert((w,h), b)   # 由于boundingbox的坐标信息和数据集的有出入,所以进行数据修改
-        out_file.write(str(cls_id) + " " + " ".join([str(a) for a in bb]) + '\n') #写入一行到txt文件, 这么写是因为数据集或网络结构的要求
-    in_file.close()
-    out_file.close()
+    source = doc.createElement('source')
+    annotation.appendChild(source)
+    database = doc.createElement('database')
+    source.appendChild(database)
+    database_name = doc.createTextNode('wider face Database')
+    database.appendChild(database_name)
+    annotation_s = doc.createElement('annotation_s')
+    source.appendChild(annotation_s)
+    annotation_s_name = doc.createTextNode('PASCAL VOC2007')
+    annotation_s.appendChild(annotation_s_name)
+    image = doc.createElement('image')
+    source.appendChild(image)
+    image_name = doc.createTextNode('filckr')
+    image.appendChild(image_name)
+    filckrid = doc.createElement('filckrid')
+    source.appendChild(filckrid)
+    filckrid_name = doc.createTextNode('-1')
+    filckrid.appendChild(filckrid_name)
 
+    owner = doc.createElement('owner')
+    annotation.appendChild(owner)
+    filckr_0 = doc.createElement('filckr_0')
+    owner.appendChild(filckr_0)
+    filckr_0_name = doc.createTextNode('filckrid')
+    filckr_0.appendChild(filckr_0_name)
+    name_0 = doc.createElement('name_0')
+    owner.appendChild(name_0)
+    name_0_name = doc.createTextNode('yuanyu')
+    name_0.appendChild(name_0_name)
 
-#创建VOC文件夹,这里的程序决定你的脚本放到哪个文件夹中运行,我选择了在VOC2007中执行,所以不必添加下文的两个路径
+    size = doc.createElement('size')
+    annotation.appendChild(size)
+    width = doc.createElement('width')
+    size.appendChild(width)
+    #这里不明白如何读取图片的宽高的
+    width.appendChild(doc.createElement(str(saveimg.shape[1])))
+    height = doc.createElement('height')
+    size.appendChild(height)
+    height.appendChild(doc.createTextNode(str(saveimg.shape[0])))
+    depth = doc.createElement('depth')
+    size.appendChild(depth)
+    depth.appendChild(doc.createTextNode(str(saveimg.shape[2])))
+    segment = doc.createElement('segment')
+    annotation.appendChild(segment)
+    segment.appendChild(doc.createTextNode('0'))
+    for i in range(len(bboxes)):
+        bbox = bboxes[i]
+        object = doc.createElement('object')
+        annotation.appendChild(object)
+        name = doc.createElement('name')
+        #这里要注意是每个bbox都是name=face
+        name.appendChild(doc.createTextNode('face'))
+        #这里也要注意每个textnode怎么来的
+        pose = doc.createElement('pose')
+        object.appendChild(pose)
+        pose.appendChild(doc.createTextNode('Unspecified'))
+        truncated = doc.createElement('truncated')
+        object.appendChild(truncated)
+        truncated.appendChild(doc.createTextNode('truncated'))
+        difficult = doc.createElement('difficult')
+        object.appendChild(difficult)
+        difficult.appendChild(doc.createTextNode('difficult'))
+        bndbox = doc.createElement('bndbox')
+        object.appendChild(bndbox)
+        xmin = doc.createElement('xmin')
+        xmax = doc.createElement('xmax')
+        ymin = doc.createElement('ymin')
+        ymax = doc.createElement('ymax')
+        bndbox.appendChild(xmin)
+        bndbox.appendChild(xmax)
+        bndbox.appendChild(ymin)
+        bndbox.appendChild(ymax)
+        xmin.appendChild(doc.createTextNode(str(bbox[0])))
+        xmax.appendChild(doc.createTextNode(str(bbox[0]+bbox[2])))
+        ymin.appendChild(doc.createTextNode(str(bbox[1])))
+        ymax.appendChild(doc.createTextNode(str(bbox[1]+bbox[3])))
+    f = open(xmlpath,'w')
+    f.write(doc.toprettyxml(indent=''))
+    f.close()
+    # 创建xml文件函数此时书写完成
 
+rootdir = "C:/Users/sherlock/Documents/DataSet/wider_face"
 
-# wd = os.getcwd()
-wd = os.getcwd()
-print(str(wd))
-#这里wd=C:\Users\xujin\Documents\YOLO4\darknet-master\build\darknet\VOCdevkit\VOC2007
-work_space_dir = wd
-print("work_space_dir: ")
-print(work_space_dir)
-#我已经创建好了Annotation和JPEGImages文件夹不需要判断了,免得出错
-# if not os.path.isdir(work_space_dir):
-#     os.mkdir(work_space_dir)
-#work_space_dir = os.path.join(work_space_dir, "VOC2007/")
-# if not os.path.isdir(work_space_dir):
-#     os.mkdir(work_space_dir)
-annotation_dir = os.path.join(work_space_dir, "Annotations\\")
-print("annotation_dir")
-print(str(annotation_dir))
-# if not os.path.isdir(annotation_dir):
-#         os.mkdir(annotation_dir)
-# clear_hidden_files(annotation_dir)
-image_dir = os.path.join(work_space_dir, "JPEGImages\\")
-print("image_dir")
-print(str(image_dir))
-# if not os.path.isdir(image_dir):
-#         os.mkdir(image_dir)
-# clear_hidden_files(image_dir)
-VOC_file_dir = os.path.join(work_space_dir, "ImageSets\\")
-if not os.path.isdir(VOC_file_dir):
-        os.mkdir(VOC_file_dir)
-VOC_file_dir = os.path.join(VOC_file_dir, "Main\\")
-if not os.path.isdir(VOC_file_dir):
-        os.mkdir(VOC_file_dir)
-print(str(VOC_file_dir))
+# 解析文件路径，提取路径包含的必要信息
+# 这里的文件路径具体是两种，分成了test，train，val等，所以采用img_set变量来代替
+# "C:/Users/sherlock/Documents/DataSet/wider_face/WIDER_train/images”
+# "C:/Users/sherlock/Documents/DataSet/wider_face/WIDER_test/images"
+# "C:/Users/sherlock/Documents/DataSet/wider_face/WIDER_val/images"
 
-#创建四个txt空文本
-train_file = open(os.path.join(wd, "2007_train.txt"), 'w')
-test_file = open(os.path.join(wd, "2007_test.txt"), 'w')
-train_file.close()
-test_file.close()
-VOC_train_file = open(os.path.join(work_space_dir, "ImageSets\Main\\train.txt"), 'w')
+# 存储了图片真值文件信息
+# "C:/Users/sherlock/Documents/DataSet/wider_face/wider_face_split/wider_face_train_bbx_gt.txt"
+# "C:/Users/sherlock/Documents/DataSet/wider_face/wider_face_split/wider_face_test_bbx_gt.txt"
 
-VOC_test_file = open(os.path.join(work_space_dir, "ImageSets\Main\\test.txt"), 'w')
+def convertImg(img_set):
+    print("begin to converImg")
+    image_dir = rootdir + "/WIDER_" + img_set +"/images"
+    # "C:/Users/sherlock/Documents/DataSet/wider_face/WIDER_train/images"
+    gt_file_path = rootdir + "/wider_face_split/wider_face_" + img_set +"_bbx_gt.txt"
 
-VOC_train_file.close()
-VOC_test_file.close()
+    index = 0
+    # 创建需要的voc格式中ImageSets/train.txt和test.txt
+    # 存放在"C:/Users/sherlock/Documents/DataSet/wider_face/ImageSets/Main/”
+    # xml存放在
+    # "C:/Users/sherlock/Documents/DataSet/wider_face/Annotation/”
+    f_write = open(rootdir + "/ImageSets/Main/" + img_set + ".txt", 'w')
 
-#我已经创建好了
-# if not os.path.exists('VOCdevkit/VOC2007/labels'):
-#     os.makedirs('VOCdevkit/VOC2007/labels')
-train_file = open(os.path.join(wd, "2007_train.txt"), 'a')
-test_file = open(os.path.join(wd, "2007_test.txt"), 'a')
-VOC_train_file = open(os.path.join(work_space_dir, "ImageSets\Main\\train.txt"), 'a')
-voc_train_file_path = os.path.join(wd, "ImageSets\Main\\train.txt")
-print(str(voc_train_file_path))
-VOC_test_file = open(os.path.join(work_space_dir, "ImageSets\Main\\test.txt"), 'a')
+    with open(gt_file_path, 'r') as gtfiles:
+        while(1):
+            filename = gtfiles.readline()[:-1]
+            if(filename == ""):
+                break
+            image_path = image_dir + '/' + filename # 得到图像具体路径
+            # "C:/Users/sherlock/Documents/DataSet/wider_face/WIDER_train/images/0--Parade/0_Parade_marchingband_1_465.jpg"
+            number_bndboxes = int(gtfiles.readline())
+            bndboxes = []
+            for i in range(number_bndboxes):
+                parameters = gtfiles.readline()
+                param_split_list = parameters.split(" ")
+                bbox_param = param_split_list[:4]
+                boudingbox = (int(bbox_param[0]),int(bbox_param[1]),int(bbox_param[2]),int(bbox_param[3]))
+                bndboxes.append(boudingbox)
+            if number_bndboxes == 0:
+                print("your bndboxes no face data\n")
+                parameters = gtfiles.readline()
+                param_split_list = parameters.split(" ")
+                bbox_param = param_split_list[:4]
+                boudingbox = (int(bbox_param[0]), int(bbox_param[1]), int(bbox_param[2]), int(bbox_param[3]))
+                bndboxes.append(boudingbox)
+            image_jpg = filename.split('/')[1]
+            image_name = image_jpg.split('.')[0] # 得到图像无扩展名名字
 
-list = os.listdir(image_dir) # list image files
-probo = random.randint(1, 100)
-print("Probobility: %d" % probo)
-for i in range(0,len(list)):
-    path = os.path.join(image_dir,list[i])
-    if os.path.isfile(path):
-        image_path = image_dir + list[i]
-        voc_path = list[i]
-        (nameWithoutExtention, extention) = os.path.splitext(os.path.basename(image_path))
-        (voc_nameWithoutExtention, voc_extention) = os.path.splitext(os.path.basename(voc_path))
-        annotation_name = nameWithoutExtention + '.xml'
-        annotation_path = os.path.join(annotation_dir, annotation_name)
-    probo = random.randint(1, 100)
-    #print("Probobility: %d" % probo)
-    if(probo < 80):
-        if os.path.exists(annotation_path):
-            train_file.write(image_path + '\n')
-            VOC_train_file.write(voc_nameWithoutExtention + '\n')
-            convert_annotation(nameWithoutExtention)
-    else:
-        if os.path.exists(annotation_path):
-            test_file.write(image_path + '\n')
-            VOC_test_file.write(voc_nameWithoutExtention + '\n')
-            convert_annotation(nameWithoutExtention)
-train_file.close()
-test_file.close()
-VOC_train_file.close()
-VOC_test_file.close()
+            f_write.write(image_name + '\n')  # 得到ImageSets/Main/只存图名的文本
+            xmlpath = rootdir + "/Annotation/" + image_name + '.xml'
+            img = cv.imread(image_path)
+            writexml(image_dir+'/'+filename,img,bndboxes,xmlpath)
+    print("convertImg has been finished")
+    f_write.close()
+
+if __name__ =="__main__":
+    data_sets = ["val","train"]
+    for set in data_sets:
+        convertImg(set)
+        print("have been finished", set, "set creat\n")
