@@ -3,6 +3,8 @@ from xml.dom.minidom import Document
 import cv2 as cv
 
 
+
+
 def writexml(filename, saveimg, bboxes, xmlpath):
     doc = Document()
     annotation = doc.createElement('annotation')
@@ -152,6 +154,7 @@ def convertImg(img_set):
             f_write.write(image_name + '\n')  # 得到ImageSets/Main/只存图名的文本
             xmlpath = rootdir + "/Annotation/" + image_name + '.xml'
             img = cv.imread(image_path)
+            cv.imwrite("{}/JPEGImages/{}".format(rootdir,image_jpg),img)
             writexml(image_dir+'/'+filename,img,bndboxes,xmlpath)
     print("convertImg has been finished")
     f_write.close()
@@ -161,3 +164,16 @@ if __name__ =="__main__":
     for set in data_sets:
         convertImg(set)
         print("have been finished", set, "set creat\n")
+
+
+
+
+
+
+
+
+
+
+
+
+
