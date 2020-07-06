@@ -55,7 +55,7 @@ def writexml(filename, saveimg, bboxes, xmlpath):
     width = doc.createElement('width')
     size.appendChild(width)
     #这里不明白如何读取图片的宽高的
-    width.appendChild(doc.createElement(str(saveimg.shape[1])))
+    width.appendChild(doc.createTextNode(str(saveimg.shape[1])))
     height = doc.createElement('height')
     size.appendChild(height)
     height.appendChild(doc.createTextNode(str(saveimg.shape[0])))
@@ -124,7 +124,12 @@ def convertImg(img_set):
     # 存放在"C:/Users/sherlock/Documents/DataSet/wider_face/ImageSets/Main/”
     # xml存放在
     # "C:/Users/sherlock/Documents/DataSet/wider_face/Annotation/”
-    f_write = open(rootdir + "/ImageSets/Main/" + img_set + ".txt", 'w')
+    f_write = open(rootdir + "/wider_face_VOC/ImageSets/Main/" + img_set + ".txt", 'w')
+    if img_set == "val":
+        lmdb_test_write = open(rootdir + "/wider_face_VOC/ImageSets/Main/test.txt", 'w')
+    if img_set == "train":
+        lmdb_trainval_write = open(rootdir + "/wider_face_VOC/ImageSets/Main/trainval.txt", 'w')
+
 
     with open(gt_file_path, 'r') as gtfiles:
         while(1):
@@ -144,20 +149,31 @@ def convertImg(img_set):
             if number_bndboxes == 0:
                 print("your bndboxes no face data\n")
                 parameters = gtfiles.readline()
-                param_split_list = parameters.split(" ")
-                bbox_param = param_split_list[:4]
-                boudingbox = (int(bbox_param[0]), int(bbox_param[1]), int(bbox_param[2]), int(bbox_param[3]))
-                bndboxes.append(boudingbox)
+                continue
+                # param_split_list = parameters.split(" ")
+                # bbox_param = param_split_list[:4]
+                # boudingbox = (int(bbox_param[0]), int(bbox_param[1]), int(bbox_param[2]), int(bbox_param[3]))
+                # bndboxes.append(boudingbox)
             image_jpg = filename.split('/')[1]
             image_name = image_jpg.split('.')[0] # 得到图像无扩展名名字
 
-            f_write.write(image_name + '\n')  # 得到ImageSets/Main/只存图名的文本
-            xmlpath = rootdir + "/Annotation/" + image_name + '.xml'
+            f_write.write(image_name+'\n')  # 得到ImageSets/Main/只存图名的文本
+            if img_set == "val":
+                lmdb_test_write.write("wider_face_VOC/JPEGImages/"+image_jpg+" "+"wider_face_VOC/JPEGImages/"+image_name+".xml"+'\n')
+            if img_set == "train":
+                lmdb_trainval_write.write("wider_face_VOC/JPEGImages/"+image_jpg+" "+"wider_face_VOC/JPEGImages/"+image_name+".xml"+'\n')
+            xmlpath = rootdir + "/wider_face_VOC/Annotation/" + image_name + '.xml'
             img = cv.imread(image_path)
-            cv.imwrite("{}/JPEGImages/{}".format(rootdir,image_jpg),img)
+            cv.imwrite("{}/wider_face_VOC/JPEGImages/{}".format(rootdir,image_jpg),img)
             writexml(image_dir+'/'+filename,img,bndboxes,xmlpath)
+            index+=1
+            print("success number is ", index)
     print("convertImg has been finished")
     f_write.close()
+    if img_set == "val":
+        lmdb_test_write.close()
+    if img_set == "train":
+        lmdb_trainval_write.close()
 
 if __name__ =="__main__":
     data_sets = ["val","train"]
